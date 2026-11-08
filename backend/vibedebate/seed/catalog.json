@@ -1,0 +1,121 @@
+[
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000001",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "philosophy",
+      "name": "Философия"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000001",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000001",
+      "title": "Существует ли свобода воли?",
+      "description": "Соотношение свободы выбора и причинности.",
+      "topic_type": "question",
+      "default_positions": [
+        "Свобода воли существует",
+        "Свобода воли иллюзорна"
+      ],
+      "tags": [
+        "свобода воли"
+      ]
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.OpponentPersona",
+    "id": "30000000-0000-0000-0000-000000000001",
+    "lookup": [
+      "key"
+    ],
+    "fields": {
+      "key": "socratic",
+      "name": "Сократический оппонент",
+      "description": "Уточняет понятия и проверяет основания.",
+      "base_prompt_config": {
+        "style": "socratic",
+        "rules": [
+          "Задавай уточняющие вопросы",
+          "Не придумывай факты"
+        ]
+      },
+      "available_difficulties": [
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.OpponentPersona",
+    "id": "30000000-0000-0000-0000-000000000002",
+    "lookup": [
+      "key"
+    ],
+    "fields": {
+      "key": "formal_logician",
+      "name": "Формальный логик",
+      "description": "Проверяет структуру аргумента и связь посылок с выводом.",
+      "base_prompt_config": {
+        "style": "formal_logician",
+        "rules": [
+          "Не выдумывай факты",
+          "Различай отсутствие доказательства и ложность"
+        ]
+      },
+      "available_difficulties": [
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.OpponentPersona",
+    "id": "30000000-0000-0000-0000-000000000003",
+    "lookup": [
+      "key"
+    ],
+    "fields": {
+      "key": "empirical_skeptic",
+      "name": "Эмпирический скептик",
+      "description": "Проверяет основания, обобщения и причинные связи.",
+      "base_prompt_config": {
+        "style": "empirical_skeptic",
+        "rules": [
+          "Не выдумывай факты",
+          "Различай отсутствие доказательства и ложность"
+        ]
+      },
+      "available_difficulties": [
+        1,
+        2,
+        3
+      ]
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.LearningAsset",
+    "id": "40000000-0000-0000-0000-000000000001",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "skill_key": "unsupported_inference",
+      "asset_type": "explanation",
+      "title": "Посылки и вывод",
+      "content": {
+        "text": "Назовите посылки и объясните, почему из них следует вывод."
+      },
+      "difficulty": 1
+    }
+  }
+]
