@@ -1,4 +1,14 @@
 name: vibedebate
+x-backend-build: &backend-build
+  context: .
+  dockerfile: Dockerfile
+  target: backend-runtime
+x-backend-environment: &backend-environment
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+  KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/vibedebate/protocol/openid-connect/certs
+  KEYCLOAK_ADMIN_API_URL: http://keycloak:8080/admin/realms/vibedebate
+  KEYCLOAK_ADMIN_TOKEN_URL: http://keycloak:8080/realms/vibedebate/protocol/openid-connect/token
 services:
   db:
     image: postgres:17.7-alpine3.23
@@ -15,15 +25,136 @@ services:
       retries: 30
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.2
-    command: ["start-dev", "--import-realm"]
+    command: ["start-dev", "--import-realm", "--spi-theme--cache-themes=false", "--spi-theme--cache-templates=false", "--spi-theme--static-max-age=-1"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KEYCLOAK_SERVICE_CLIENT_SECRET: ${KEYCLOAK_SERVICE_CLIENT_SECRET}
     ports: ["127.0.0.1:8180:8080"]
     volumes:
-      - ./infra/keycloak/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - ./frontend/infra/realm.json:/opt/keycloak/data/import/realm.json:ro
+      - ./frontend/keycloak-theme/copper:/opt/keycloak/themes/copper:ro
       - vibedebate_keycloak:/opt/keycloak/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec 'exec 3<>/dev/tcp/127.0.0.1/8080;
+          printf "GET /realms/vibedebate/.well-known/openid-configuration HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3;
+          read -r status <&3; [[ "$$status" == *" 200 "* ]]'
+      interval: 3s
+      timeout: 5s
+      start_period: 30s
+      retries: 30
+  keycloak-theme:
+    image: quay.io/keycloak/keycloak:26.4.2
+    entrypoint: ["/bin/sh", "/configure-theme.sh"]
+    environment:
+      THEME_ADMIN: ${KEYCLOAK_ADMIN}
+      THEME_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    volumes:
+      - ./frontend/scripts/configure-theme.sh:/configure-theme.sh:ro
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+  test-db:
+    image: postgres:17.7-alpine3.23
+    environment:
+      POSTGRES_DB: vibedebate_test
+      POSTGRES_USER: vibedebate_test
+      POSTGRES_PASSWORD: local-tests-only
+    tmpfs: ["/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  test:
+    build:
+      <<: *backend-build
+      target: backend-test
+    env_file: .env
+    environment:
+      <<: *backend-environment
+      POSTGRES_HOST: test-db
+      POSTGRES_DB: vibedebate_test
+      POSTGRES_USER: vibedebate_test
+      POSTGRES_PASSWORD: local-tests-only
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/vibedebate
+    restart: "no"
+    depends_on:
+      test-db:
+        condition: service_healthy
+      keycloak-theme:
+        condition: service_completed_successfully
+  frontend-test:
+    build:
+      context: ./frontend
+      target: frontend-test
+    restart: "no"
+  migrate:
+    image: vibedebate-backend
+    build: *backend-build
+    env_file: .env
+    environment: *backend-environment
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      test:
+        condition: service_completed_successfully
+      frontend-test:
+        condition: service_completed_successfully
+  seed:
+    image: vibedebate-backend
+    build: *backend-build
+    env_file: .env
+    environment: *backend-environment
+    command: ["vibedebate"]
+    restart: "no"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  backend:
+    image: vibedebate-backend
+    build: *backend-build
+    env_file: .env
+    environment: *backend-environment
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      test:
+        condition: service_completed_successfully
+      frontend-test:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5).close()"]
+      interval: 3s
+      timeout: 6s
+      start_period: 5s
+      retries: 20
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:5173:80"]
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+      keycloak-theme:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ && wget -q -O /dev/null http://127.0.0.1/health/ready"]
+      interval: 3s
+      timeout: 6s
+      start_period: 3s
+      retries: 20
 volumes:
   vibedebate_postgres:
   vibedebate_keycloak:
