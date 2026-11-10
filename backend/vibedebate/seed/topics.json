@@ -1,0 +1,281 @@
+[
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000002",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "ethics",
+      "name": "Этика"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000003",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "society",
+      "name": "Общество и политика"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000004",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "technology",
+      "name": "Технологии"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000005",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "education",
+      "name": "Образование"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.TopicCategory",
+    "id": "10000000-0000-0000-0000-000000000006",
+    "lookup": [
+      "slug"
+    ],
+    "fields": {
+      "slug": "environment",
+      "name": "Экология"
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000002",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000001",
+      "title": "Может ли искусственный интеллект обладать сознанием?",
+      "description": "Критерии сознания и границы функционального объяснения.",
+      "topic_type": "question",
+      "default_positions": [
+        "Сознание возможно у искусственных систем",
+        "Сознание требует биологической основы"
+      ],
+      "tags": [
+        "сознание",
+        "ИИ"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000003",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000002",
+      "title": "Оправданы ли эксперименты на животных?",
+      "description": "Соотношение научной пользы и морального статуса животных.",
+      "topic_type": "question",
+      "default_positions": [
+        "Эксперименты допустимы при строгих ограничениях",
+        "Эксперименты следует заменить альтернативами"
+      ],
+      "tags": [
+        "биоэтика"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000004",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000002",
+      "title": "Всегда ли допустима свобода слова?",
+      "description": "Границы выражения мнений и предотвращение вреда.",
+      "topic_type": "question",
+      "default_positions": [
+        "Свобода слова требует минимальных ограничений",
+        "Предотвращение вреда оправдывает ограничения"
+      ],
+      "tags": [
+        "свобода слова"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000005",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000003",
+      "title": "Нужен ли безусловный базовый доход?",
+      "description": "Социальные гарантии, стимулы к труду и распределение ресурсов.",
+      "topic_type": "question",
+      "default_positions": [
+        "Базовый доход улучшит социальную защищённость",
+        "Адресная помощь эффективнее базового дохода"
+      ],
+      "tags": [
+        "экономика"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000006",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000003",
+      "title": "Следует ли сделать голосование обязательным?",
+      "description": "Гражданский долг и право не участвовать в выборах.",
+      "topic_type": "question",
+      "default_positions": [
+        "Обязательное голосование укрепляет представительство",
+        "Участие в выборах должно быть добровольным"
+      ],
+      "tags": [
+        "демократия"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000007",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000004",
+      "title": "Следует ли ограничивать использование ИИ в принятии решений?",
+      "description": "Ответственность и прозрачность автоматизированных решений.",
+      "topic_type": "question",
+      "default_positions": [
+        "Значимые решения должны оставаться за человеком",
+        "Автоматизация допустима при проверяемых гарантиях"
+      ],
+      "tags": [
+        "ИИ",
+        "ответственность"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000008",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000004",
+      "title": "Допустимо ли ослаблять шифрование ради общественной безопасности?",
+      "description": "Защита частной жизни и возможности расследования преступлений.",
+      "topic_type": "question",
+      "default_positions": [
+        "Сквозное шифрование должно сохраняться",
+        "Доступ по решению суда может быть оправдан"
+      ],
+      "tags": [
+        "приватность",
+        "безопасность"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000009",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000005",
+      "title": "Нужно ли отменить школьные оценки?",
+      "description": "Обратная связь, мотивация и сравнение учебных результатов.",
+      "topic_type": "question",
+      "default_positions": [
+        "Описательная обратная связь полезнее оценок",
+        "Оценки необходимы для прозрачных требований"
+      ],
+      "tags": [
+        "обучение"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000010",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000005",
+      "title": "Должно ли высшее образование быть бесплатным?",
+      "description": "Доступность образования и распределение его стоимости.",
+      "topic_type": "question",
+      "default_positions": [
+        "Образование следует финансировать из бюджета",
+        "Частичное участие студентов в оплате оправдано"
+      ],
+      "tags": [
+        "образование"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  },
+  {
+    "model": "vibedebate.models.catalog.Topic",
+    "id": "20000000-0000-0000-0000-000000000011",
+    "lookup": [
+      "id"
+    ],
+    "fields": {
+      "category_id": "10000000-0000-0000-0000-000000000006",
+      "title": "Стоит ли расширять атомную энергетику?",
+      "description": "Климатические цели, надёжность энергоснабжения и долгосрочные риски.",
+      "topic_type": "question",
+      "default_positions": [
+        "Атомная энергетика необходима для декарбонизации",
+        "Приоритет следует отдать другим источникам энергии"
+      ],
+      "tags": [
+        "энергетика",
+        "климат"
+      ],
+      "is_active": true,
+      "is_available_in_basic_mode": true
+    }
+  }
+]
