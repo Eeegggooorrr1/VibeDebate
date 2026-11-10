@@ -8,6 +8,7 @@ app = typer.Typer()
 
 async def load() -> None:
     container = build_container()
+
     try:
         async with container() as request:
             await (await request.get(SeedService)).load_data()

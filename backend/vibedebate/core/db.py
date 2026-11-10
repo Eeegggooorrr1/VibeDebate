@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import (
 from vibedebate.core.config import DatabaseSettings
 
 
-def create_engine(settings: DatabaseSettings) -> AsyncEngine:
+def create_engine(
+    settings: DatabaseSettings,
+) -> AsyncEngine:
     return create_async_engine(settings.url, pool_pre_ping=True)
 
 

@@ -8,6 +8,8 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    Index,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from vibedebate.models.base import Base, Entity, Updated
@@ -34,6 +36,7 @@ class Debate(Entity, Updated, Base):
         ForeignKey("topics.id", ondelete="RESTRICT")
     )
     custom_topic: Mapped[str | None] = mapped_column(Text)
+    topic_title: Mapped[str] = mapped_column(Text)
     user_position: Mapped[str] = mapped_column(Text)
     opponent_position: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
@@ -64,6 +67,7 @@ class DebateChat(Entity, Updated, Base):
     side: Mapped[str] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str] = mapped_column(Text)
+    attack_hint: Mapped[str | None] = mapped_column(Text)
     seed_claim: Mapped[str] = mapped_column(Text)
     user_role: Mapped[str] = mapped_column(String(100))
     opponent_persona_id: Mapped[UUID] = mapped_column(
@@ -80,6 +84,14 @@ class DebateChat(Entity, Updated, Base):
 class ChatMessage(Entity, Base):
     __tablename__ = "chat_messages"
     __table_args__ = (
+        Index(
+            "uq_chat_messages_unfinished_turn",
+            "chat_id",
+            unique=True,
+            postgresql_where=text(
+                "role = 'assistant' AND generation_status IN ('pending','generating')"
+            ),
+        ),
         UniqueConstraint("chat_id", "sequence_no"),
         UniqueConstraint("chat_id", "client_request_id"),
         UniqueConstraint("id", "chat_id"),

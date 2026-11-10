@@ -36,6 +36,10 @@ class MessageAnalysis(Entity, Base):
     confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     dimensions: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
     strengths: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
+    conduct_flags: Mapped[list] = mapped_column(
+        JSONB, default=list, server_default="[]"
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_step: Mapped[str | None] = mapped_column(Text)
     analysis_status: Mapped[str] = mapped_column(String(16))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -97,7 +101,8 @@ class LLMUsageEvent(Entity, Base):
     output_tokens: Mapped[int]
     cached_input_tokens: Mapped[int] = mapped_column(default=0, server_default="0")
     reasoning_tokens: Mapped[int] = mapped_column(default=0, server_default="0")
-    estimated_cost: Mapped[Decimal] = mapped_column(Numeric(18, 8))
+    estimated_cost: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    usage_reported: Mapped[bool] = mapped_column(default=False, server_default="false")
     currency: Mapped[str] = mapped_column(String(3))
     is_estimated: Mapped[bool]
     latency_ms: Mapped[int]

@@ -12,7 +12,7 @@ class AppError(Exception):
         *,
         code: str | None = None,
         status_code: int | None = None,
-        extra: Any | None = None
+        extra: Any | None = None,
     ) -> None:
         self.message = self.message if message is None else message
         self.code = self.code if code is None else code

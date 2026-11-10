@@ -6,6 +6,7 @@ import hashlib
 import html
 import re
 import secrets
+import time
 from urllib.parse import urlparse, parse_qs, urljoin
 import httpx
 from vibedebate.core.config import create_user_settings
@@ -154,6 +155,11 @@ def test_keycloak_registration_pkce_and_refresh():
             )
             registered.raise_for_status()
             assert registered.json()[0]["attributes"]["blocked"] == ["true"]
+            # Keycloak 26.4 compares refresh-token iat < lastRefresh in whole
+            # seconds (TokenManager.validateTokenReuse). Cross a clock tick
+            # before refreshing so the later replay is observably stale.
+            # Without this, a fast run exercises its same-second grace window.
+            time.sleep(1.1)
             refreshed = client.post(
                 base + "/protocol/openid-connect/token",
                 data={

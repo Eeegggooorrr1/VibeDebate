@@ -12,30 +12,42 @@ from vibedebate.schemas.requests.user import ProfileUpdate
 class UserRepository:
     session: AsyncSession
 
-    async def get_or_create_user(self, subject: str, display_name: str | None) -> User:
+    async def get_or_create_user(
+        self,
+        subject: str,
+        display_name: str | None,
+    ) -> User:
         existing = await self.session.scalar(
             select(User).where(User.keycloak_sub == subject)
         )
+
         if existing is not None:
             return existing
+
         await self.session.execute(
             insert(User)
             .values(keycloak_sub=subject, display_name=display_name)
             .on_conflict_do_nothing(index_elements=[User.keycloak_sub])
         )
+
         return (
             await self.session.scalars(select(User).where(User.keycloak_sub == subject))
         ).one()
 
     async def get_user_by_id(
-        self, user_id: UUID, *, for_update: bool = False
+        self,
+        user_id: UUID,
+        *,
+        for_update: bool = False,
     ) -> User | None:
-        # Refresh cached ORM state after acquiring the row lock.
         return await self.session.get(
             User, user_id, with_for_update=for_update, populate_existing=for_update
         )
 
-    async def list_user_interest_ids(self, user_id: UUID) -> list[UUID]:
+    async def list_user_interest_ids(
+        self,
+        user_id: UUID,
+    ) -> list[UUID]:
         return list(
             await self.session.scalars(
                 select(UserInterest.topic_category_id).where(
@@ -44,7 +56,11 @@ class UserRepository:
             )
         )
 
-    async def update_user_profile(self, user: User, profile: ProfileUpdate) -> None:
+    async def update_user_profile(
+        self,
+        user: User,
+        profile: ProfileUpdate,
+    ) -> None:
         user.display_name = profile.display_name
         user.level = profile.level
         user.goals = profile.goals
@@ -61,6 +77,10 @@ class UserRepository:
         )
         await self.session.flush()
 
-    async def update_user_status(self, user: User, status: UserStatus) -> None:
+    async def update_user_status(
+        self,
+        user: User,
+        status: UserStatus,
+    ) -> None:
         user.status = status
         await self.session.flush()

@@ -21,11 +21,16 @@ class UserAdministrationService:
     keycloak_client: KeycloakUserClient
 
     async def ban_user(
-        self, current_user: CurrentUser, user_id: UUID, reason: str
+        self,
+        current_user: CurrentUser,
+        user_id: UUID,
+        reason: str,
     ) -> None:
         user = await self._get_user_for_status_change(user_id)
+
         if current_user.subject == user.keycloak_sub:
             raise SelfBlockingError()
+
         admin = await self.user_repository.get_or_create_user(
             current_user.subject, current_user.display_name
         )
@@ -36,11 +41,16 @@ class UserAdministrationService:
         )
 
     async def unban_user(
-        self, current_user: CurrentUser, user_id: UUID, reason: str
+        self,
+        current_user: CurrentUser,
+        user_id: UUID,
+        reason: str,
     ) -> None:
         user = await self._get_user_for_status_change(user_id)
+
         if current_user.subject == user.keycloak_sub:
             raise SelfUnblockingError()
+
         admin = await self.user_repository.get_or_create_user(
             current_user.subject, current_user.display_name
         )
@@ -50,10 +60,16 @@ class UserAdministrationService:
             admin.id, user_id, AdminAction.UNBAN_USER, reason
         )
 
-    async def _get_user_for_status_change(self, user_id: UUID) -> User:
+    async def _get_user_for_status_change(
+        self,
+        user_id: UUID,
+    ) -> User:
         user = await self.user_repository.get_user_by_id(user_id, for_update=True)
+
         if user is None:
             raise UserNotFoundError()
+
         if user.status == UserStatus.DELETED:
             raise DeletedUserStatusChangeError()
+
         return user

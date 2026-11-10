@@ -121,14 +121,7 @@ def test_api_user_rbac_and_audit(migrate_test_database):
         class TestConfig(Provider):
             @provide(scope=Scope.APP)
             def database(self) -> DatabaseSettings:
-                return DatabaseSettings(
-                    postgres_host="127.0.0.1",
-                    postgres_port=15433,
-                    postgres_db="vibedebate_test",
-                    postgres_user="vibedebate",
-                    postgres_password="vibedebate-local",
-                    _env_file=None,
-                )
+                return DatabaseSettings(postgres_db="vibedebate_test")
 
             @provide(scope=Scope.APP)
             def user(self) -> UserSettings:
@@ -316,14 +309,7 @@ def test_generic_seed_lookup_merge_and_rollback(migrate_test_database, tmp_path)
 
     async def run():
         engine = create_engine(
-            DatabaseSettings(
-                postgres_host="127.0.0.1",
-                postgres_port=15433,
-                postgres_db="vibedebate_test",
-                postgres_user="vibedebate",
-                postgres_password="vibedebate-local",
-                _env_file=None,
-            )
+            DatabaseSettings(postgres_db="vibedebate_test")
         )
         factory = async_sessionmaker(engine, expire_on_commit=False)
         settings = SeedSettings(seed_dir=tmp_path, _env_file=None)

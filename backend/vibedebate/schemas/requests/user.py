@@ -13,18 +13,26 @@ class ProfileUpdate(BaseModel):
 
     @field_validator("goals")
     @classmethod
-    def validate_goals(cls, values: list[str]) -> list[str]:
+    def validate_goals(
+        cls,
+        values: list[str],
+    ) -> list[str]:
         if any(not 1 <= len(v) <= 100 for v in values) or len(set(values)) != len(
             values
         ):
             raise ValueError("Goals must be unique and contain 1 to 100 characters")
+
         return values
 
     @field_validator("interests")
     @classmethod
-    def unique_interests(cls, values: list[UUID]) -> list[UUID]:
+    def unique_interests(
+        cls,
+        values: list[UUID],
+    ) -> list[UUID]:
         if len(set(values)) != len(values):
             raise ValueError("Interests must be unique")
+
         return values
 
 
