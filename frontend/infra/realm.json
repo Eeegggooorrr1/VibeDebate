@@ -1,0 +1,137 @@
+{
+  "realm": "vibedebate",
+  "enabled": true,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-vibedebate",
+        "composite": true,
+        "composites": {
+          "client": {
+            "vibedebate-api": [
+              "user"
+            ]
+          }
+        },
+        "id": "50000000-0000-0000-0000-000000000001"
+      }
+    ],
+    "client": {
+      "vibedebate-api": [
+        {
+          "name": "user"
+        },
+        {
+          "name": "admin"
+        }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "vibedebate-api",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "vibedebate-web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8000/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "vibedebate-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "blocked",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "blocked",
+            "claim.name": "blocked",
+            "jsonType.label": "boolean",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "vibedebate-backend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KEYCLOAK_SERVICE_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "defaultRole": {
+    "id": "50000000-0000-0000-0000-000000000001",
+    "name": "default-roles-vibedebate"
+  },
+  "accessTokenLifespan": 300,
+  "users": [
+    {
+      "username": "service-account-vibedebate-backend",
+      "enabled": true,
+      "serviceAccountClientId": "vibedebate-backend",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users"
+        ]
+      }
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "name": "declarative-user-profile",
+        "providerId": "declarative-user-profile",
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"email\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"email\": {}}, \"required\": {\"roles\": [\"user\"]}}, {\"name\": \"firstName\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"lastName\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}}, {\"name\": \"blocked\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"validations\": {\"options\": {\"options\": [\"true\", \"false\"]}}}]}"
+          ]
+        }
+      }
+    ]
+  },
+  "loginTheme": "copper",
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "ru",
+    "en"
+  ],
+  "defaultLocale": "ru"
+}

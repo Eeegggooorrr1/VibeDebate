@@ -1,0 +1,62 @@
+.app-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 12px 21px;
+  border: 0;
+  border-radius: var(--radius-control);
+  color: #fff4ec;
+  background: linear-gradient(125deg, #a95c35, #914321);
+  box-shadow:
+    inset 0 1px 1px #ffdab76b,
+    0 5px 12px #00000035;
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    transform 280ms var(--ease-spring),
+    box-shadow 200ms ease,
+    filter 160ms ease;
+}
+.app-button--secondary {
+  color: #f1c29f;
+  background: linear-gradient(120deg, #cf92602c, #db794015);
+  box-shadow:
+    inset 0 1px 1px #ffe5c744,
+    inset 0 0 0 1px #d8a07830,
+    0 5px 15px #00000026;
+}
+.app-button--quiet {
+  color: var(--color-muted);
+  background: transparent;
+  box-shadow: none;
+}
+.app-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+.app-button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+.app-button:disabled {
+  opacity: 0.6;
+}
+.button-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-spin 700ms linear infinite;
+}
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (pointer: coarse) {
+  .app-button {
+    min-height: 48px;
+  }
+}

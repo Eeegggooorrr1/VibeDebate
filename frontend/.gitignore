@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.env
+.env.local
+.env.*.local
+.impeccable/
+PRODUCT.md
+DESIGN.md
+/README.md

@@ -1,0 +1,21 @@
+.glass-panel {
+  border-radius: var(--radius-panel);
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+.glass-panel--inset {
+  border-radius: 16px;
+  background: var(--glass-inset);
+  box-shadow: var(--inset-shadow);
+  backdrop-filter: none;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    background: #352920f5;
+  }
+  .glass-panel--inset {
+    background: #493328;
+  }
+}

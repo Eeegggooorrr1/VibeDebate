@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  --font-body: "Golos Text Variable", sans-serif;
+  --color-ground: #211b18;
+  --color-ink: #f0e7df;
+  --color-muted: #d2c1b3;
+  --color-accent: #e6a276;
+  --color-action: #a5532d;
+  --color-rule: #f2d9c526;
+  --color-error: #ffb2a1;
+  --glass-fill: linear-gradient(135deg, #79604c40, #281e1999 58%, #8a533b28);
+  --glass-inset: linear-gradient(130deg, #72553e5c, #3c2c2378);
+  --glass-shadow:
+    inset 0 1.5px 2px #fff0dc59, inset 1px 0 1px #f4d7bc30,
+    inset -1px -1px 2px #00000060, 0 18px 40px #0000003b;
+  --inset-shadow:
+    inset 0 1px 2px #f7d3b54f, inset 1px 0 1px #ffe5c716,
+    inset -1px -1px 2px #0005, 0 10px 23px #00000028;
+  --radius-panel: 24px;
+  --radius-control: 12px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.2, 1.35, 0.4, 1);
+}

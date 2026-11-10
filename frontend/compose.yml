@@ -1,0 +1,5 @@
+# Compatibility entry point. Root Compose owns the whole startup graph.
+name: vibedebate
+include:
+  - path: ../docker-compose.yml
+    env_file: ../.env

@@ -1,0 +1,33 @@
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.saved-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.profile-form .error-message {
+  margin-top: 0;
+}
+.form-field {
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .profile-form {
+    gap: 26px;
+  }
+  .profile-form .choice {
+    padding: 11px 13px;
+  }
+}

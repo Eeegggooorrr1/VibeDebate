@@ -1,0 +1,72 @@
+.liquid-disclosure {
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--glass-inset);
+  box-shadow: var(--inset-shadow);
+  transition: border-radius 400ms var(--ease-spring);
+}
+.liquid-disclosure--open {
+  border-radius: 18px;
+}
+.disclosure-trigger {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  padding: 14px 19px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: none;
+  color: var(--color-ink);
+  font-size: 14px;
+}
+.disclosure-trigger:hover {
+  background: #ffffff04;
+}
+.disclosure-trigger:focus-visible {
+  outline-offset: -4px;
+  border-radius: inherit;
+}
+.disclosure-summary {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.disclosure-trigger > svg {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  transition: transform 350ms var(--ease-spring);
+}
+.liquid-disclosure--open .disclosure-trigger > svg {
+  transform: rotate(180deg);
+}
+.disclosure-content {
+  padding: 5px 19px 20px;
+  opacity: 0;
+  transform: translateY(7px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.liquid-disclosure--open .disclosure-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition-duration: 210ms;
+  transition-delay: 110ms;
+}
+.liquid-disclosure {
+  transition:
+    border-radius 400ms var(--ease-spring),
+    box-shadow 240ms ease,
+    background-color 240ms ease;
+}
+@media (hover: hover) {
+  .liquid-disclosure:hover {
+    background-color: #ac6e3c14;
+    box-shadow:
+      inset 0 1px 2px #f7d3b570,
+      inset 1px 0 1px #ffe5c716,
+      0 8px 22px #0003;
+  }
+}
