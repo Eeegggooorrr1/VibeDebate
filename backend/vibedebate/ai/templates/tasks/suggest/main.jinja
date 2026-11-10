@@ -1,0 +1,9 @@
+{% include 'shared/base.jinja' %}
+{% include 'tasks/suggest/goal.jinja' %}
+{% if context.side == 'attack' %}
+{% include 'tasks/suggest/attack.jinja' %}
+{% else %}
+{% include 'tasks/suggest/defense.jinja' %}
+{% include 'components/direct_opening.jinja' %}
+{% endif %}
+{% include 'tasks/suggest/output.jinja' %}

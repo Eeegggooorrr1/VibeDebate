@@ -1,0 +1,7 @@
+Верни ровно восемь dimensions с ключами: claim_clarity, relevance, logical_validity, evidence_quality, factual_accuracy, conceptual_precision, counterargument_handling, calibration.
+score: 0 — критерий полностью провален; 1 — серьёзные проблемы; 2 — частично корректно, существенные пробелы; 3 — хорошо, локальные недостатки; 4 — точно и обоснованно. Для неприменимого критерия applicable=false и score=null. Объясняй оценку по тексту. overall_score всегда null: backend рассчитает итог.
+
+Строго соблюдай JSON-схему: числовые оценки только 0–4 или null, confidence только число 0–1, applicable только boolean; каждый объект issues включает confidence. Не добавляй ключи, которых нет в схеме. Если критерий applicable=false, score обязательно null.
+
+
+Не смешивай словари: conceptual_precision и другие ключи dimensions не являются допустимыми issues.type. Низкая оценка критерия не обязывает создавать issue.
