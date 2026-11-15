@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import {
   CircleAlert,
   TriangleAlert,
@@ -8,6 +8,11 @@ import {
   LoaderCircle,
   ArrowUpRight,
 } from "@lucide/vue";
+import ExerciseDialog from "./ExerciseDialog.vue";
+import LiquidDisclosure from "../ui/LiquidDisclosure.vue";
+import { issueLabels } from "../../features/debates/analysisLabels";
+const training = ref(false),
+  issueIndex = ref(0);
 import GlassPanel from "../ui/GlassPanel.vue";
 import GlassDialog from "../ui/GlassDialog.vue";
 import type { MessageAnalysis } from "../../api/debate-contracts";
@@ -131,13 +136,35 @@ const dimensions: Record<string, string> = {
             :key="index"
             class="analysis-issue"
           >
+            <button
+              class="exercise-entry"
+              :aria-label="`Потренироваться: ${issueLabels[issue.type] || 'работа с аргументом'}`"
+              :aria-describedby="`practice-tip-${index}`"
+              @click="
+                issueIndex = index;
+                training = true;
+              "
+            >
+              <ArrowUpRight :size="20" aria-hidden="true" />
+              <span
+                :id="`practice-tip-${index}`"
+                class="exercise-tooltip"
+                role="tooltip"
+                >Потренироваться</span
+              >
+            </button>
             <h4>
               <span :class="['analysis-count', `severity-${issue.severity}`]"
                 ><component
                   :is="severities.find((s) => s.key === issue.severity)?.icon"
                   :size="18"
               /></span>
-              {{ severities.find((s) => s.key === issue.severity)?.label }}
+              <span>{{
+                issueLabels[issue.type] || "Замечание к аргументу"
+              }}</span>
+              <span class="sr-only">{{
+                severities.find((s) => s.key === issue.severity)?.label
+              }}</span>
             </h4>
             <blockquote>{{ issue.evidence_quote }}</blockquote>
             <p>{{ issue.explanation }}</p>
@@ -156,8 +183,7 @@ const dimensions: Record<string, string> = {
             </li>
           </ul>
         </section>
-        <section>
-          <h3>По критериям</h3>
+        <LiquidDisclosure title="По критериям" class="analysis-criteria">
           <dl class="analysis-dimensions">
             <div v-for="d in analysis.dimensions" :key="d.key">
               <dt>
@@ -169,8 +195,14 @@ const dimensions: Record<string, string> = {
               <dd>{{ d.explanation }}</dd>
             </div>
           </dl>
-        </section>
+        </LiquidDisclosure>
       </template>
     </div>
   </GlassDialog>
+  <ExerciseDialog
+    v-if="analysis"
+    v-model:open="training"
+    :message-id="analysis.message_id"
+    :issue-index="issueIndex"
+  />
 </template>

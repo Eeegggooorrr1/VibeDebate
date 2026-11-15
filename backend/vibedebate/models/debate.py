@@ -77,6 +77,13 @@ class DebateChat(Entity, Updated, Base):
     status: Mapped[str] = mapped_column(
         String(16), default="active", server_default="active"
     )
+    scored_answers: Mapped[int] = mapped_column(default=0, server_default="0")
+    score_total: Mapped[float] = mapped_column(default=0, server_default="0")
+    good_streak: Mapped[int] = mapped_column(default=0, server_default="0")
+    progress: Mapped[int] = mapped_column(default=0, server_default="0")
+    progress_sequence: Mapped[int] = mapped_column(default=0, server_default="0")
+    mastery_source: Mapped[str | None] = mapped_column(String(32))
+    mastered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     local_summary: Mapped[str | None] = mapped_column(Text)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -92,6 +99,15 @@ class ChatMessage(Entity, Base):
                 "role = 'assistant' AND generation_status IN ('pending','generating')"
             ),
         ),
+        ForeignKeyConstraint(
+            ["reply_to_message_id", "chat_id"],
+            ["chat_messages.id", "chat_messages.chat_id"],
+            name="fk_chat_messages_reply_same_chat",
+        ),
+        CheckConstraint(
+            "reply_to_message_id IS NULL OR reply_to_message_id <> id",
+            name="reply_not_self",
+        ),
         UniqueConstraint("chat_id", "sequence_no"),
         UniqueConstraint("chat_id", "client_request_id"),
         UniqueConstraint("id", "chat_id"),
@@ -105,6 +121,8 @@ class ChatMessage(Entity, Base):
     chat_id: Mapped[UUID] = mapped_column(
         ForeignKey("debate_chats.id", ondelete="CASCADE"), index=True
     )
+    reply_to_message_id: Mapped[UUID | None] = mapped_column(index=True)
+    reply_to_content: Mapped[str | None] = mapped_column(Text)
     sequence_no: Mapped[int]
     role: Mapped[str] = mapped_column(String(16))
     content: Mapped[str] = mapped_column(Text)

@@ -63,4 +63,5 @@ class ChatCreate(DebateInput):
 
 
 class MessageCreate(DebateInput):
+    reply_to_message_id: UUID | None = None
     content: str = Field(min_length=1, max_length=12000)

@@ -23,6 +23,8 @@ export const failure = (e: unknown) => {
     return (
       (
         {
+          invalid_reply_target:
+            "Выберите завершённое сообщение оппонента в этом чате.",
           chat_busy: "Оппонент ещё отвечает. Дождитесь завершения ответа.",
           ai_not_configured: "Сервис ИИ пока не настроен.",
           context_limit_exceeded:
@@ -78,6 +80,7 @@ export async function sendTurn(
   key: string,
   signal: AbortSignal,
   onEvent: (name: string, data: any) => void,
+  replyToMessageId?: string,
 ) {
   const token = await accessToken();
   const response = await fetch(
@@ -91,7 +94,10 @@ export async function sendTurn(
         Accept: "text/event-stream",
         "Idempotency-Key": key,
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+      }),
     },
   );
   if (!response.ok) {

@@ -1,22 +1,40 @@
 from __future__ import annotations
-from vibedebate.models.enums import ChatSide
-from dataclasses import dataclass
+from vibedebate.ai.exceptions import AIError, AIInvalidResponseError
+from vibedebate.services.debate.exceptions import ChatInactiveError, DebateInactiveError
+
 import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from vibedebate.ai.contracts import AIProvider, AIMessage
+from vibedebate.ai.debate import DebateIntelligence, DebatePlan, ChatSeed, check_context
+from vibedebate.ai.prompts import opponent_instruction
+from vibedebate.ai.replies import reply_context
+from vibedebate.ai.opponent_reply import (
+    OpponentReplyFilter,
+    OpponentChunk,
+    victory_marker,
+)
+from vibedebate.services.debate.progression import ChatProgressPolicy
+from vibedebate.schemas.internal.progression import ProgressState
+from vibedebate.ai.usage import usage_scope
 from vibedebate.core.config import AISettings
 from vibedebate.core.db import transaction
-from vibedebate.core.exceptions import AppError, ConflictError
+from vibedebate.core.exceptions import AppError
 from vibedebate.models.debate import Debate, DebateChat, ChatMessage
+from vibedebate.models.enums import ChatSide, UserStatus
+from vibedebate.repositories.analysis import AnalysisRepository
 from vibedebate.repositories.debate import DebateRepository
 from vibedebate.repositories.user import UserRepository
-from vibedebate.schemas.internal.user import CurrentUser
 from vibedebate.schemas.internal.debate import PreparedTurn
+from vibedebate.schemas.internal.user import CurrentUser
 from vibedebate.schemas.requests.debate import (
     AdvancedDebateCreate,
     ChatCreate,
@@ -29,13 +47,7 @@ from vibedebate.schemas.responses.debate import (
     ChatResponse,
     MessageResponse,
 )
-from vibedebate.ai.contracts import AIProvider, AIMessage, AIError, AIChunk
-from vibedebate.ai.debate import DebateIntelligence, DebatePlan, ChatSeed, check_context
-from vibedebate.ai.prompts import opponent_instruction
-from vibedebate.ai.usage import usage_scope
-from vibedebate.models.analysis import MessageAnalysis
 from vibedebate.services.debate.analysis import AnalysisService
-from vibedebate.models.enums import UserStatus
 from vibedebate.services.user.exceptions import UserDeletedError
 
 logger = logging.getLogger(__name__)
@@ -48,6 +60,19 @@ class DebateService:
     provider: AIProvider
     settings: AISettings
     analyses: AnalysisService
+    progression: ChatProgressPolicy
+
+    async def archive_debate(self, current: CurrentUser, debate_id: UUID) -> None:
+        async with transaction(self.factory) as session:
+            await DebateRepository(session).archive_debate(
+                debate_id, await self._user(session, current)
+            )
+
+    async def archive_chat(self, current: CurrentUser, chat_id: UUID) -> None:
+        async with transaction(self.factory) as session:
+            await DebateRepository(session).archive_chat(
+                chat_id, await self._user(session, current)
+            )
 
     @staticmethod
     async def _user(
@@ -142,7 +167,9 @@ class DebateService:
         async with transaction(self.factory) as session:
             repo = DebateRepository(session)
 
-            return await self._save_debate(repo, request, user_id, persona_id, title, plan)
+            return await self._save_debate(
+                repo, request, user_id, persona_id, title, plan
+            )
 
     async def list(
         self,
@@ -186,7 +213,7 @@ class DebateService:
             debate = await repo.debate(debate_id, await self._user(session, current))
 
             if debate.status != "active":
-                raise ConflictError(code="debate_inactive")
+                raise DebateInactiveError()
 
             persona = await repo.persona(
                 request.opponent_persona_id, request.difficulty
@@ -209,7 +236,10 @@ class DebateService:
 
         async with transaction(self.factory) as session:
             repo = DebateRepository(session)
-            return await self._save_chat(repo, debate_id, debate.user_id, persona_id, request, seed)
+
+            return await self._save_chat(
+                repo, debate_id, debate.user_id, persona_id, request, seed
+            )
 
     async def suggest(
         self,
@@ -222,7 +252,7 @@ class DebateService:
             debate = await repo.debate(debate_id, await self._user(session, current))
 
             if debate.status != "active":
-                raise ConflictError(code="debate_inactive")
+                raise DebateInactiveError()
 
             persona = await repo.persona(
                 request.opponent_persona_id, request.difficulty
@@ -302,9 +332,11 @@ class DebateService:
                 "active",
                 "mastery_suggested",
             ):
-                raise ConflictError(code="chat_inactive")
+                raise ChatInactiveError()
 
-            user, response, replay = await repo.reserve(chat, request.content, key)
+            user, response, replay = await repo.reserve(
+                chat, request.content, key, request.reply_to_message_id
+            )
 
             snapshot = PreparedTurn(
                 user=MessageResponse.model_validate(user),
@@ -317,9 +349,11 @@ class DebateService:
             if replay:
                 return snapshot
 
-            session.add(MessageAnalysis(message_id=user.id, analysis_status="pending"))
+            await AnalysisRepository(session).create(user.id)
 
-            return await self._complete_turn_context(repo, chat, debate, snapshot, request)
+            return await self._complete_turn_context(
+                repo, chat, debate, snapshot, request
+            )
 
     async def _finish(
         self,
@@ -327,13 +361,33 @@ class DebateService:
         text: str,
         failed: bool,
         seed: ChatSeed | None = None,
+        user_victory: bool = False,
     ) -> MessageResponse:
         async with transaction(self.factory) as session:
             repo = DebateRepository(session)
+            # Match the chat-first lock order of analysis/progression updates.
+            chat = await repo.lock_message_chat(snapshot.response.id)
             result = await repo.finish(snapshot.response.id, text, failed=failed)
 
+            if user_victory and not failed and chat.status != "archived":
+                state = self.progression.concede(
+                    ProgressState(
+                        chat.scored_answers,
+                        chat.score_total,
+                        chat.good_streak,
+                        chat.mastered_at is not None,
+                    )
+                )
+                repo.save_progress(
+                    chat,
+                    state,
+                    self.progression.percentage(state),
+                    chat.progress_sequence,
+                    source="opponent_concession",
+                )
+
             if seed is not None:
-                chat = await repo.chat(snapshot.user.chat_id, snapshot.user_id)
+                chat = await repo.message_chat(snapshot.response.id)
 
                 chat.title, chat.description, chat.seed_claim = (
                     seed.title,
@@ -372,12 +426,15 @@ class DebateService:
     ) -> AsyncIterator[str]:
         if snapshot.replay:
             yield self._started_event(snapshot)
-            yield self._event("message_status", snapshot.response.model_dump(mode="json"))
+            yield self._event(
+                "message_status", snapshot.response.model_dump(mode="json")
+            )
 
             return
 
         self.analyses.start(snapshot.user.id)
         text, completed, persisted = "", False, False
+        user_victory = False
         seed = None
 
         try:
@@ -391,11 +448,14 @@ class DebateService:
 
                 if chunk.finished:
                     completed = True
+                    user_victory = chunk.user_victory
 
             if not completed or not text.strip():
-                raise AIError("Incomplete AI response", code="ai_invalid_response")
+                raise AIInvalidResponseError("Incomplete AI response")
 
-            response = await self._finish(snapshot, text, False, seed)
+            response = await self._finish(
+                snapshot, text, False, seed, user_victory=user_victory
+            )
 
             persisted = True
             yield self._event("message_completed", response.model_dump(mode="json"))
@@ -423,6 +483,7 @@ class DebateService:
             "seed_claim": chat.seed_claim,
             "difficulty": chat.difficulty,
             "persona": persona.base_prompt_config,
+            "victory_marker": victory_marker(),
         }
 
         if chat.side == ChatSide.DEFENSE:
@@ -434,6 +495,11 @@ class DebateService:
         history = await repo.messages(chat.id)
 
         messages = [opponent_instruction(context)]
+        messages.extend(
+            reply_context(
+                snapshot.user.reply_to_message_id, snapshot.user.reply_to_content
+            )
+        )
         messages.extend(
             AIMessage(role=m.role, content=m.content)
             for m in history
@@ -543,7 +609,9 @@ class DebateService:
         return self._event(
             "error",
             {
-                "code": error.code if isinstance(error, AppError) else "generation_failed",
+                "code": (
+                    error.code if isinstance(error, AppError) else "generation_failed"
+                ),
                 "message": "Response generation failed",
                 "message_id": str(snapshot.response.id),
             },
@@ -561,7 +629,7 @@ class DebateService:
         debate = await repo.debate(debate_id, user_id)
 
         if debate.status != "active":
-            raise ConflictError(code="debate_inactive")
+            raise DebateInactiveError()
 
         await repo.persona(persona_id, request.difficulty)
 
@@ -584,7 +652,8 @@ class DebateService:
     async def _reply_chunks(
         self,
         snapshot: PreparedTurn,
-    ) -> AsyncIterator[AIChunk]:
+    ) -> AsyncIterator[OpponentChunk]:
+        reply_filter = OpponentReplyFilter(snapshot.context.get("victory_marker"))
         with usage_scope(
             snapshot.user_id,
             "opponent_reply",
@@ -593,4 +662,14 @@ class DebateService:
             message_id=snapshot.response.id,
         ):
             async for chunk in self.provider.stream(snapshot.messages):
-                yield chunk
+                visible = reply_filter.feed(chunk.delta)
+                if chunk.finished:
+                    tail, won = reply_filter.finish()
+                    yield OpponentChunk(
+                        delta=visible + tail,
+                        usage=chunk.usage,
+                        finished=True,
+                        user_victory=won,
+                    )
+                else:
+                    yield OpponentChunk(delta=visible, usage=chunk.usage)

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { Trash2 } from "@lucide/vue";
+import ArchiveDialog from "../components/debates/ArchiveDialog.vue";
 import { RouterLink } from "vue-router";
 import GlassPanel from "../components/ui/GlassPanel.vue";
 import AppButton from "../components/ui/AppButton.vue";
@@ -26,10 +28,20 @@ async function load(reset = false) {
     loading.value = false;
   }
 }
+const archiveTarget = ref<{ id: string; kind: "debates"; title: string }>();
+function archived() {
+  debates.value = debates.value.filter((d) => d.id !== archiveTarget.value?.id);
+  void load(true);
+}
 onMounted(() => load(true));
 </script>
 <template>
   <main class="debate-page">
+    <ArchiveDialog
+      :target="archiveTarget"
+      @close="archiveTarget = undefined"
+      @archived="archived"
+    />
     <header class="debate-heading">
       <h1>Мои дебаты</h1>
       <RouterLink class="app-button app-button--primary" to="/debates/new"
@@ -43,19 +55,29 @@ onMounted(() => load(true));
       ><p v-if="!loading && !error && !debates.length" class="empty-state">
         Здесь появятся ваши дебаты. Выберите тему и начните первую тренировку.
       </p>
-      <RouterLink
-        v-for="debate in debates"
-        :key="debate.id"
-        :to="`/debates/${debate.id}`"
-        class="debate-row"
-        ><div>
-          <h2>{{ debate.topic_title }}</h2>
-          <p>{{ debate.user_position }}</p>
-        </div>
-        <span>{{
-          new Date(debate.created_at).toLocaleDateString("ru-RU")
-        }}</span></RouterLink
-      >
+      <div v-for="debate in debates" :key="debate.id" class="debate-row">
+        <RouterLink :to="`/debates/${debate.id}`" class="debate-row-content"
+          ><div>
+            <h2>{{ debate.topic_title }}</h2>
+            <p>{{ debate.user_position }}</p>
+          </div>
+          <span>{{
+            new Date(debate.created_at).toLocaleDateString("ru-RU")
+          }}</span></RouterLink
+        ><button
+          class="icon-button"
+          :aria-label="`Удалить дебаты: ${debate.topic_title}`"
+          @click="
+            archiveTarget = {
+              id: debate.id,
+              kind: 'debates',
+              title: debate.topic_title,
+            }
+          "
+        >
+          <Trash2 :size="18" />
+        </button>
+      </div>
       <p v-if="loading" class="empty-state" role="status">
         Загружаем дебаты…
       </p></GlassPanel

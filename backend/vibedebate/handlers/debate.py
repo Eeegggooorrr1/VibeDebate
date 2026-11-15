@@ -146,3 +146,43 @@ async def retry_analysis(
     service: FromDishka[DebateService],
 ):
     return await service.analysis(user, message_id, retry=True)
+
+
+from vibedebate.ai.exercises import Exercise, ExerciseRequest, CheckRequest, Feedback
+from vibedebate.services.debate.exercises import ExerciseService
+
+
+@router.post("/messages/{message_id}/exercises", response_model=Exercise)
+async def exercise_generate(
+    message_id: UUID,
+    body: ExerciseRequest,
+    user: AuthenticatedUser,
+    service: FromDishka[ExerciseService],
+):
+    return await service.generate(user, message_id, body)
+
+
+@router.post("/messages/{message_id}/exercises/check", response_model=Feedback)
+async def exercise_check(
+    message_id: UUID,
+    body: CheckRequest,
+    user: AuthenticatedUser,
+    service: FromDishka[ExerciseService],
+):
+    return await service.check(user, message_id, body)
+
+
+@router.delete("/debates/{debate_id}", status_code=200)
+async def archive_debate(
+    debate_id: UUID, user: AuthenticatedUser, service: FromDishka[DebateService]
+):
+    await service.archive_debate(user, debate_id)
+    return {"archived": True}
+
+
+@router.delete("/chats/{chat_id}", status_code=200)
+async def archive_chat(
+    chat_id: UUID, user: AuthenticatedUser, service: FromDishka[DebateService]
+):
+    await service.archive_chat(user, chat_id)
+    return {"archived": True}

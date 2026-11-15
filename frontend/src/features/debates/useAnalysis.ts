@@ -6,6 +6,7 @@ import type { Message, MessageAnalysis } from "../../api/debate-contracts";
 export function useAnalysis(
   messages: Ref<Message[]>,
   chatId: () => string | undefined,
+  onCompleted?: () => void,
 ) {
   const results = ref<Record<string, MessageAnalysis>>({});
   const selectedId = ref("");
@@ -36,6 +37,8 @@ export function useAnalysis(
         if (run !== generation || disposed) return;
         results.value[message.id] = result;
       }
+      if (targets.some((m) => results.value[m.id]?.status === "completed"))
+        onCompleted?.();
       error.value = "";
     } catch (e) {
       if (run !== generation || disposed) return;

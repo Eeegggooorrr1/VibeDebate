@@ -1,3 +1,8 @@
+from vibedebate.ai.exceptions import (
+    AIError,
+    AIInvalidResponseError,
+    ContextLimitExceededError,
+)
 from dataclasses import dataclass
 
 
@@ -5,8 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Annotated, Any, TypeVar
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from vibedebate.core.config import AISettings
-from vibedebate.core.exceptions import UnprocessableEntityError
-from vibedebate.ai.contracts import AIProvider, AIMessage, AIError, AIUsage
+from vibedebate.ai.contracts import AIProvider, AIMessage, AIUsage
 from vibedebate.ai.prompts import render_task, plan_task, structured_messages
 
 Text = Annotated[str, Field(min_length=1, max_length=4000)]
@@ -55,9 +59,7 @@ def check_context(
     settings: AISettings,
 ) -> None:
     if sum(len(m.content) for m in messages) > settings.ai_max_context_chars:
-        raise UnprocessableEntityError(
-            "Chat context limit reached", code="context_limit_exceeded"
-        )
+        raise ContextLimitExceededError()
 
 
 @dataclass
@@ -78,9 +80,7 @@ class TemplateDebateIntelligence(DebateIntelligence):
         try:
             return schema.model_validate_json(result.content), result.usage
         except ValidationError as exc:
-            raise AIError(
-                "Invalid structured AI response", code="ai_invalid_response"
-            ) from exc
+            raise AIInvalidResponseError("Invalid structured AI response") from exc
 
     async def plan(
         self,
@@ -91,9 +91,7 @@ class TemplateDebateIntelligence(DebateIntelligence):
         )
 
         if len(plan.chats) != self.settings.defense_chat_count:
-            raise AIError(
-                "Incorrect number of defense chats", code="ai_invalid_response"
-            )
+            raise AIInvalidResponseError("Incorrect number of defense chats")
 
         return plan, usage
 
@@ -133,9 +131,7 @@ class TemplateDebateIntelligence(DebateIntelligence):
         )
 
         if context["side"] == "attack" and not result.hint:
-            raise AIError(
-                "Attack suggestion requires a hint", code="ai_invalid_response"
-            )
+            raise AIInvalidResponseError("Attack suggestion requires a hint")
 
         if context["side"] == "defense":
             result.hint = None

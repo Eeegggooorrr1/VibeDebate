@@ -2,21 +2,6 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from typing import Literal
 from pydantic import BaseModel, Field
-from vibedebate.core.exceptions import ServiceUnavailableError
-
-
-class AIError(ServiceUnavailableError):
-    code = "ai_unavailable"
-    message = "AI operation failed"
-
-    def __init__(
-        self,
-        *args,
-        usage=None,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self.usage = usage
 
 
 class AIMessage(BaseModel):

@@ -1,7 +1,8 @@
+from vibedebate.ai.exceptions import AIError, AIInvalidResponseError
 from dataclasses import dataclass
 from pydantic import BaseModel
 from vibedebate.ai.analysis import MessageAnalyzer, AnalysisResult
-from vibedebate.ai.contracts import AIMessage, AIUsage, AIError
+from vibedebate.ai.contracts import AIMessage, AIUsage
 from vibedebate.ai.debate import TemplateDebateIntelligence
 from vibedebate.ai.prompts import render_task
 
@@ -45,16 +46,13 @@ class TemplateMessageAnalyzer(MessageAnalyzer):
         keys = [d.key for d in result.dimensions]
 
         if len(keys) != len(WEIGHTS) or set(keys) != set(WEIGHTS):
-            raise AIError("Invalid analysis dimensions", code="ai_invalid_response")
+            raise AIInvalidResponseError("Invalid analysis dimensions")
 
         if any(
             not i.evidence_quote.strip() or i.evidence_quote not in messages[-1].content
             for i in result.issues
         ):
-            raise AIError(
-                "Analysis evidence does not match the message",
-                code="ai_invalid_response",
-            )
+            raise AIInvalidResponseError("Analysis evidence does not match the message")
 
         applicable = [d for d in result.dimensions if d.applicable]
         result.overall_score = (
@@ -101,8 +99,6 @@ class ContextSummarizer:
         )
 
         if len(result.summary) > max_chars:
-            raise AIError(
-                "Summary exceeds the requested budget", code="ai_invalid_response"
-            )
+            raise AIInvalidResponseError("Summary exceeds the requested budget")
 
         return result, usage

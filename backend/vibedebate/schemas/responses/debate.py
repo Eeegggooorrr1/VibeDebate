@@ -17,6 +17,12 @@ class ChatResponse(ORMResponse):
     description: str
     seed_claim: str
     attack_hint: str | None = None
+    scored_answers: int
+    score_total: float
+    good_streak: int
+    progress: int
+    mastery_source: str | None = None
+    mastered_at: datetime | None
     opponent_persona_id: UUID
     difficulty: int
     status: str
@@ -40,6 +46,8 @@ class DebateDetail(DebateResponse):
 
 
 class MessageResponse(ORMResponse):
+    reply_to_message_id: UUID | None = None
+    reply_to_content: str | None = None
     id: UUID
     chat_id: UUID
     sequence_no: int

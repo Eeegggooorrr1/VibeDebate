@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { Plus, WandSparkles, CircleHelp, RotateCw } from "@lucide/vue";
+import {
+  Plus,
+  WandSparkles,
+  CircleHelp,
+  RotateCw,
+  Trash2,
+  Reply,
+  X,
+} from "@lucide/vue";
+import ChatProgress from "../components/debates/ChatProgress.vue";
+import ArchiveDialog from "../components/debates/ArchiveDialog.vue";
 import AnalysisPanel from "../components/debates/AnalysisPanel.vue";
 import { useAnalysis } from "../features/debates/useAnalysis";
 import { useSuggestions } from "../features/debates/useSuggestions";
@@ -55,7 +65,11 @@ const {
   inspect,
   retry: retryAnalysis,
   refresh: refreshAnalysis,
-} = useAnalysis(messages, () => chat.value?.id);
+} = useAnalysis(
+  messages,
+  () => chat.value?.id,
+  () => void refreshProgress(),
+);
 const {
   suggestion,
   suggesting,
@@ -76,6 +90,46 @@ function suggestTopic() {
 watch(levels, (v) => {
   if (!v.includes(difficulty.value)) difficulty.value = v[0] || 1;
 });
+const progressOpen = ref(false);
+watch(
+  () => chat.value?.id,
+  () => {
+    progressOpen.value = false;
+  },
+);
+const archiveTarget = ref<{
+  id: string;
+  kind: "chats" | "debates";
+  title: string;
+}>();
+async function refreshProgress() {
+  const id = chat.value?.id;
+  if (!id) return;
+  try {
+    const updated = await request<Chat>(`/chats/${id}`);
+    if (chat.value?.id !== id) return;
+    chat.value = updated;
+    const index = debate.value?.chats?.findIndex((c) => c.id === id);
+    if (index !== undefined && index >= 0)
+      debate.value!.chats![index] = updated;
+  } catch {
+    /* Normal loading and analysis controls provide retry feedback. */
+  }
+}
+async function archived() {
+  if (archiveTarget.value?.kind === "debates") {
+    stop();
+    await router.push("/debates");
+  } else if (debate.value && archiveTarget.value) {
+    const id = archiveTarget.value.id;
+    debate.value.chats = debate.value.chats?.filter((c) => c.id !== id);
+    if (chat.value?.id === id) {
+      stop();
+      chat.value = undefined;
+      await router.push(`/debates/${debate.value.id}`);
+    }
+  }
+}
 const blocked = computed(() =>
   messages.value.some((m) =>
     ["pending", "generating"].includes(m.generation_status),
@@ -84,11 +138,33 @@ const blocked = computed(() =>
 let controller: AbortController | undefined,
   timer: ReturnType<typeof setTimeout> | undefined,
   version = 0;
-const pendingTurns = new Map<
-  string,
-  { chat: string; content: string; key: string }
->();
-let pending: { chat: string; content: string; key: string } | undefined;
+type PendingTurn = {
+  chat: string;
+  content: string;
+  key: string;
+  replyToMessageId?: string;
+};
+const pendingTurns = new Map<string, PendingTurn>();
+let pending: PendingTurn | undefined;
+const replyToId = ref("");
+const replyDrafts = new Map<string, string>();
+const replyTarget = computed(() =>
+  messages.value.find((m) => m.id === replyToId.value),
+);
+function replyTo(message: Message) {
+  if (sending.value || blocked.value || pending) return;
+  replyToId.value = message.id;
+  composerOpen.value = true;
+  void nextTick(() => argumentInput.value?.focus());
+}
+function jumpToMessage(id: string) {
+  document.getElementById(`message-${id}`)?.scrollIntoView({
+    block: "center",
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+  });
+}
 const drafts = new Map<string, string>();
 function openCreate(direction: "attack" | "defense") {
   if (creating.value) return;
@@ -127,7 +203,11 @@ async function load() {
   }
 }
 async function selectChat(id: string) {
-  if (chat.value) drafts.set(chat.value.id, draft.value);
+  if (chat.value) {
+    drafts.set(chat.value.id, draft.value);
+    if (replyToId.value) replyDrafts.set(chat.value.id, replyToId.value);
+    else replyDrafts.delete(chat.value.id);
+  }
   stop();
   const current = version;
   historyLoading.value = true;
@@ -135,6 +215,7 @@ async function selectChat(id: string) {
   chatError.value = "";
 
   pending = pendingTurns.get(id);
+  replyToId.value = pending?.replyToMessageId || replyDrafts.get(id) || "";
   draft.value = drafts.get(id) || pending?.content || "";
   composerOpen.value = false;
   try {
@@ -154,6 +235,8 @@ async function selectChat(id: string) {
       pendingTurns.delete(id);
       pending = undefined;
       draft.value = "";
+      replyToId.value = "";
+      replyDrafts.delete(id);
     }
     scroll(true);
     poll();
@@ -187,6 +270,8 @@ async function refresh() {
       pendingTurns.delete(id);
       pending = undefined;
       draft.value = "";
+      replyToId.value = "";
+      replyDrafts.delete(id);
     }
     poll();
   } catch (e) {
@@ -243,12 +328,22 @@ async function send() {
   const id = chat.value.id,
     content = draft.value.trim(),
     current = version;
-  if (pending && (pending.chat !== id || pending.content !== content)) {
+  if (
+    pending &&
+    (pending.chat !== id ||
+      pending.content !== content ||
+      pending.replyToMessageId !== (replyToId.value || undefined))
+  ) {
     chatError.value =
       "Результат предыдущей отправки неизвестен. Повторите исходный аргумент — дубликат не появится.";
     return;
   }
-  pending ??= { chat: id, content, key: crypto.randomUUID() };
+  pending ??= {
+    chat: id,
+    content,
+    key: crypto.randomUUID(),
+    replyToMessageId: replyToId.value || undefined,
+  };
   pendingTurns.set(id, pending);
   controller = new AbortController();
   sending.value = true;
@@ -268,6 +363,8 @@ async function send() {
           mergeMessage(messages.value, data.response);
           responseId = data.response.id;
           draft.value = "";
+          replyToId.value = "";
+          replyDrafts.delete(id);
           composerOpen.value = false;
           drafts.delete(id);
           pendingTurns.delete(id);
@@ -288,6 +385,7 @@ async function send() {
         }
         scroll();
       },
+      pending.replyToMessageId,
     );
     if (!ended)
       throw new Error("Соединение прервано. Восстанавливаем историю.");
@@ -338,6 +436,16 @@ watch(
 </script>
 <template>
   <main class="debate-page workspace">
+    <ArchiveDialog
+      :target="archiveTarget"
+      @close="archiveTarget = undefined"
+      @archived="archived"
+    />
+    <GlassDialog v-if="chat" v-model="progressOpen" title="Прогресс чата">
+      <div class="progress-detail">
+        <ChatProgress :chat="chat" />
+      </div>
+    </GlassDialog>
     <p v-if="loading" class="empty-state" role="status">Открываем дебаты…</p>
     <p v-if="error" class="error-message" role="alert">
       {{ error }} <button v-if="!debate" @click="load">Повторить</button>
@@ -497,17 +605,34 @@ watch(
                   />
                 </button>
               </header>
-              <RouterLink
+              <div
                 v-for="c in debate.chats?.filter((c) => c.side === direction)"
                 :key="c.id"
-                :to="`/debates/${debate.id}/chats/${c.id}`"
-                class="chat-link"
-                :title="c.title || 'Новый аргумент'"
-                :aria-current="
-                  route.params.chatId === c.id ? 'page' : undefined
-                "
-                >{{ c.title || "Новый аргумент" }}</RouterLink
+                class="chat-entry"
               >
+                <RouterLink
+                  :to="`/debates/${debate.id}/chats/${c.id}`"
+                  class="chat-link"
+                  :title="c.title || 'Новый аргумент'"
+                  :aria-current="
+                    route.params.chatId === c.id ? 'page' : undefined
+                  "
+                  ><span>{{ c.title || "Новый аргумент" }}</span></RouterLink
+                >
+                <button
+                  class="icon-button chat-entry-delete"
+                  :aria-label="`Удалить чат: ${c.title || 'Новый аргумент'}`"
+                  @click="
+                    archiveTarget = {
+                      id: c.id,
+                      kind: 'chats',
+                      title: c.title || 'Новый аргумент',
+                    }
+                  "
+                >
+                  <Trash2 :size="16" />
+                </button>
+              </div>
               <p
                 v-if="!debate.chats?.some((c) => c.side === direction)"
                 class="muted"
@@ -523,7 +648,40 @@ watch(
           </p>
           <template v-if="chat"
             ><header class="conversation-header">
-              <h2>{{ chat.title || "Новый аргумент" }}</h2>
+              <div class="chat-heading-actions">
+                <h2>{{ chat.title || "Новый аргумент" }}</h2>
+                <div class="chat-toolbar-actions">
+                  <button
+                    class="icon-button chat-progress-button"
+                    aria-label="Открыть прогресс чата"
+                    aria-haspopup="dialog"
+                    :aria-expanded="progressOpen"
+                    @click="progressOpen = true"
+                  >
+                    <ChatProgress :chat="chat" compact />
+                  </button>
+                  <button
+                    class="icon-button"
+                    aria-label="Удалить чат"
+                    @click="
+                      archiveTarget = {
+                        id: chat.id,
+                        kind: 'chats',
+                        title: chat.title,
+                      }
+                    "
+                  >
+                    <Trash2 :size="18" />
+                  </button>
+                </div>
+              </div>
+              <p v-if="chat.mastered_at" class="chat-mastery" role="status">
+                {{
+                  chat.mastery_source === "opponent_concession"
+                    ? "Отличная работа! Оппонент признал вашу победу — чат пройден."
+                    : "Отличная работа! Подтема освоена. Можно продолжить практику или перейти к следующей."
+                }}
+              </p>
               <p class="muted">
                 {{ chat.side === "attack" ? "Атака" : "Защита" }} ·
                 {{
@@ -554,11 +712,24 @@ watch(
               <article
                 v-for="m in messages"
                 :key="m.id"
+                :id="`message-${m.id}`"
                 class="message"
                 :class="{ 'message-user': m.role === 'user' }"
               >
                 <header class="message-heading">
                   <h3>{{ m.role === "user" ? "Вы" : "Оппонент" }}</h3>
+                  <button
+                    v-if="
+                      m.role === 'assistant' &&
+                      m.generation_status === 'completed'
+                    "
+                    class="icon-button"
+                    aria-label="Ответить на сообщение оппонента"
+                    :disabled="sending || blocked || !!pending"
+                    @click="replyTo(m)"
+                  >
+                    <Reply :size="18" />
+                  </button>
                   <button
                     v-if="m.role === 'user'"
                     class="icon-button message-analysis-button"
@@ -568,6 +739,15 @@ watch(
                     <CircleHelp :size="18" />
                   </button>
                 </header>
+                <button
+                  v-if="m.reply_to_message_id && m.reply_to_content"
+                  class="message-reply"
+                  aria-label="Перейти к сообщению оппонента"
+                  @click="jumpToMessage(m.reply_to_message_id)"
+                >
+                  <span>В ответ на сообщение оппонента</span
+                  ><span>{{ m.reply_to_content }}</span>
+                </button>
                 <MessageContent
                   v-if="m.role === 'assistant'"
                   :content="
@@ -599,6 +779,7 @@ watch(
               class="text-action"
               @click="
                 draft = pending?.content || draft;
+                replyToId = pending?.replyToMessageId || '';
                 composerOpen = true;
               "
             >
@@ -610,6 +791,21 @@ watch(
               :summary="draft.trim() ? 'Черновик' : 'Написать'"
               class="composer-disclosure"
               ><form class="composer" @submit.prevent="send">
+                <div v-if="replyTarget" class="reply-preview">
+                  <div>
+                    <strong>Ответ оппоненту</strong
+                    ><button
+                      type="button"
+                      class="icon-button"
+                      aria-label="Отменить ответ на сообщение"
+                      :disabled="sending || !!pending"
+                      @click="replyToId = ''"
+                    >
+                      <X :size="16" />
+                    </button>
+                  </div>
+                  <p>{{ replyTarget.content }}</p>
+                </div>
                 <label for="argument">Ваш аргумент</label
                 ><textarea
                   id="argument"

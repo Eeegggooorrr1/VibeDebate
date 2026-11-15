@@ -8,6 +8,12 @@ export interface Debate {
   chats?: Chat[];
 }
 export interface Chat {
+  scored_answers?: number;
+  score_total?: number;
+  good_streak?: number;
+  progress?: number;
+  mastered_at?: string | null;
+  mastery_source?: string | null;
   id: string;
   debate_id: string;
   side: "attack" | "defense";
@@ -20,6 +26,8 @@ export interface Chat {
   status: string;
 }
 export interface Message {
+  reply_to_message_id?: string | null;
+  reply_to_content?: string | null;
   id: string;
   chat_id: string;
   sequence_no: number;

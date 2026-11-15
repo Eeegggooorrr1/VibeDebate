@@ -1126,3 +1126,214 @@ body:has(.glass-dialog[open]) {
     -webkit-line-clamp: unset;
   }
 }
+
+/* Focused hover lift for the argument composer and subtopic chats. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .workspace .composer-disclosure,
+  .workspace .chat-link {
+    transition:
+      translate 280ms var(--ease-spring),
+      box-shadow 240ms var(--ease-out),
+      background-color 240ms var(--ease-out);
+  }
+  .workspace .composer-disclosure:hover,
+  .workspace .chat-link:hover {
+    translate: 0 -4px;
+  }
+}
+
+.chat-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.chat-progress > svg {
+  flex-shrink: 0;
+}
+.chat-progress-details {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--color-ink);
+  font-size: 13px;
+}
+.chat-progress-details > span {
+  color: var(--color-muted);
+}
+.chat-progress-track {
+  display: block;
+  height: 5px;
+  border-radius: 4px;
+  background: #ffffff18;
+  overflow: hidden;
+}
+.chat-progress-track > span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+.chat-heading-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+.chat-mastery {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #91d9a418;
+  color: #b4e7bd;
+  font-size: 14px;
+}
+.workspace .chat-group .chat-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.workspace .chat-link > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.debate-row-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.chat-progress--compact {
+  flex: 0 0 26px;
+  width: 26px;
+}
+.chat-progress--compact > svg {
+  width: 26px;
+  height: 26px;
+}
+.workspace .chat-link > span:last-child {
+  flex: 1;
+}
+
+.chat-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.chat-progress-button {
+  padding: 0;
+  background: transparent;
+}
+.chat-progress-button .chat-progress--compact {
+  width: 40px;
+  flex-basis: 40px;
+}
+.chat-progress-button .chat-progress--compact > svg {
+  width: 40px;
+  height: 40px;
+}
+.progress-detail {
+  display: grid;
+  gap: 24px;
+  line-height: 1.7;
+}
+.progress-detail > .chat-progress {
+  padding: 20px;
+  background: var(--glass-inset);
+  border-radius: 16px;
+}
+
+.message-reply,
+.reply-preview {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  margin: 12px 0;
+  border: 1px solid var(--color-rule);
+  border-radius: 12px;
+  background: #211b1860;
+  color: var(--color-ink);
+  text-align: left;
+  line-height: 1.6;
+}
+.message-reply > span {
+  display: block;
+}
+.message-reply > span:first-child {
+  color: var(--color-accent);
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.message-reply > span:last-child,
+.reply-preview p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.reply-preview > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reply-preview strong {
+  font-size: 13px;
+  color: var(--color-accent);
+}
+
+.composer > .reply-preview {
+  display: block;
+}
+
+.workspace .composer-disclosure:has(.reply-preview) {
+  max-height: 72%;
+}
+.composer > .reply-preview {
+  margin: 0;
+  padding: 8px 12px;
+}
+.reply-preview .icon-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+.reply-preview p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.chat-entry > .chat-link {
+  flex: 1;
+  min-width: 0;
+}
+.chat-entry-delete {
+  flex-shrink: 0;
+  width: 32px;
+  height: 40px;
+  padding: 0;
+  color: var(--color-muted);
+  background: transparent;
+}
+.chat-entry-delete:hover {
+  color: var(--color-accent);
+}
+@media (pointer: coarse) {
+  .chat-entry-delete {
+    min-height: 44px;
+  }
+}

@@ -1,9 +1,11 @@
+from vibedebate.services.debate.exercises import ExerciseService
 from collections.abc import AsyncIterator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from vibedebate.ai.usage import LoggedAIProvider
 from vibedebate.ai.analysis import MessageAnalyzer
 from vibedebate.ai.tasks import TemplateMessageAnalyzer
 from vibedebate.services.debate.analysis import AnalysisService
+from vibedebate.services.debate.progression import ChatProgressPolicy
 import httpx
 from dishka import Provider, Scope, provide
 from vibedebate.core.config import create_ai_settings, AISettings
@@ -14,6 +16,11 @@ from vibedebate.services.debate.service import DebateService
 
 
 class DebateProvider(Provider):
+    @provide(scope=Scope.APP)
+    def progression(self) -> ChatProgressPolicy:
+        return ChatProgressPolicy()
+
+    exercises = provide(ExerciseService, scope=Scope.REQUEST)
     settings = provide(staticmethod(create_ai_settings), scope=Scope.APP)
     intelligence = provide(
         TemplateDebateIntelligence, provides=DebateIntelligence, scope=Scope.APP
@@ -47,7 +54,8 @@ class DebateProvider(Provider):
         self,
         factory: async_sessionmaker[AsyncSession],
         analyzer: MessageAnalyzer,
+        progression: ChatProgressPolicy,
     ) -> AsyncIterator[AnalysisService]:
-        service = AnalysisService(factory, analyzer)
+        service = AnalysisService(factory, analyzer, progression)
         yield service
         await service.close()

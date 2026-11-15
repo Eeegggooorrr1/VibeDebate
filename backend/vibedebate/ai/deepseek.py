@@ -1,17 +1,15 @@
+from vibedebate.ai.exceptions import (
+    AIError,
+    AIInvalidResponseError,
+    AINotConfiguredError,
+)
 from dataclasses import dataclass
 import json
 from collections.abc import AsyncIterator
 import httpx
 from pydantic import ValidationError
 from vibedebate.core.config import AISettings
-from vibedebate.ai.contracts import (
-    AIProvider,
-    AIMessage,
-    AIResult,
-    AIChunk,
-    AIUsage,
-    AIError,
-)
+from vibedebate.ai.contracts import AIProvider, AIMessage, AIResult, AIChunk, AIUsage
 
 
 @dataclass
@@ -27,7 +25,7 @@ class DeepSeekProvider(AIProvider):
         json_output: bool = False,
     ) -> dict:
         if not self.settings.deepseek_api_key:
-            raise AIError("DeepSeek is not configured", code="ai_not_configured")
+            raise AINotConfiguredError()
 
         body = {
             "model": self.settings.deepseek_model,
@@ -88,10 +86,8 @@ class DeepSeekProvider(AIProvider):
                 choice["finish_reason"] != "stop"
                 or not choice["message"]["content"].strip()
             ):
-                raise AIError(
-                    "AI response is incomplete",
-                    code="ai_invalid_response",
-                    usage=self._usage(data.get("usage")),
+                raise AIInvalidResponseError(
+                    "AI response is incomplete", usage=self._usage(data.get("usage"))
                 )
 
             return AIResult(
@@ -129,10 +125,7 @@ class DeepSeekProvider(AIProvider):
 
                     if payload == "[DONE]":
                         if not finished:
-                            raise AIError(
-                                "AI stream ended prematurely",
-                                code="ai_invalid_response",
-                            )
+                            raise AIInvalidResponseError("AI stream ended prematurely")
 
                         yield AIChunk(finished=True)
 
@@ -142,7 +135,7 @@ class DeepSeekProvider(AIProvider):
                     finished = finished or stopped
                     yield chunk
 
-            raise AIError("AI stream ended prematurely", code="ai_invalid_response")
+            raise AIInvalidResponseError("AI stream ended prematurely")
         except (
             httpx.HTTPError,
             ValueError,
@@ -170,15 +163,17 @@ class DeepSeekProvider(AIProvider):
 
             if reason is not None:
                 if reason != "stop":
-                    raise AIError(
+                    raise AIInvalidResponseError(
                         "AI response is incomplete",
-                        code="ai_invalid_response",
                         usage=self._usage(data.get("usage")),
                     )
 
                 finished = True
 
-        return AIChunk(
-            delta=delta,
-            usage=self._usage(data["usage"]) if data.get("usage") else None,
-        ), finished
+        return (
+            AIChunk(
+                delta=delta,
+                usage=self._usage(data["usage"]) if data.get("usage") else None,
+            ),
+            finished,
+        )
