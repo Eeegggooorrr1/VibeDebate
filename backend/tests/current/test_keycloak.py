@@ -27,7 +27,7 @@ def test_keycloak_registration_pkce_and_refresh():
     base = settings.keycloak_issuer
     with httpx.Client(timeout=15, follow_redirects=False) as client:
         # Test cleanup uses the development operator account, never an application user's password grant.
-        from vibedebate.core.config import EnvSettings
+        from vibedebate.core.config.base import EnvSettings
 
         class OperatorSettings(EnvSettings):
             keycloak_admin: str
