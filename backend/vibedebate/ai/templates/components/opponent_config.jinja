@@ -1,3 +1,8 @@
-{% include persona_template %}
+{% if persona_template %}{% include persona_template %}{% endif %}
 {% include difficulty_template %}
-Личность задаёт приоритет, а не обязательный приём для любой реплики. Сохраняй один главный предмет ответа и понятную речь. Сложность не означает агрессию, многословие или намеренные ошибки. Дополнительные persona.rules из контекста применяй в пределах задачи.
+{% if experimental_persona %}
+{% include 'personas/shared/training.jinja' %}
+{% else %}
+{% include 'personas/shared/fairness.jinja' %}
+{% endif %}
+{% if historical_persona %}{% include 'personas/shared/historical.jinja' %}{% endif %}

@@ -3,6 +3,7 @@
 {% if context.side == 'attack' %}
 {% include 'tasks/suggest/attack.jinja' %}
 {% else %}
+{% include 'components/opponent_config.jinja' %}
 {% include 'tasks/suggest/defense.jinja' %}
 {% include 'components/direct_opening.jinja' %}
 {% endif %}
