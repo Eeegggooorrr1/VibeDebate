@@ -8,9 +8,24 @@ from vibedebate.services.user.profile import UserService
 from vibedebate.services.user.administration import UserAdministrationService
 from vibedebate.services.catalog.categories import CategoryService
 from vibedebate.cli.bootstrap.seed_service import SeedService
+from vibedebate.repositories.catalog_reads import (
+    CatalogReadRepository,
+    CachedCatalogReadRepository,
+    PostgresCatalogReadRepository,
+)
+from vibedebate.repositories.cached import ReadCache
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 class ApplicationProvider(Provider):
+    @provide(scope=Scope.APP)
+    def catalog_reads(
+        self, factory: async_sessionmaker[AsyncSession], cache: ReadCache
+    ) -> CatalogReadRepository:
+        return CachedCatalogReadRepository(
+            PostgresCatalogReadRepository(factory), cache
+        )
+
     verifier = provide(TokenVerifier, scope=Scope.APP)
     keycloak_client = provide(KeycloakUserClient, scope=Scope.APP)
     user_repository = provide(UserRepository, scope=Scope.REQUEST)

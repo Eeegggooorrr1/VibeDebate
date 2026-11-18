@@ -8,6 +8,7 @@ from vibedebate.services.debate.exceptions import (
     MessageNotFoundError,
     OpponentUnavailableError,
     TopicUnavailableError,
+    MessageNotAnalyzableError,
 )
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ from vibedebate.schemas.responses.debate import MessageResponse
 from vibedebate.schemas.internal.progression import ProgressState
 from vibedebate.models.base import Base
 from vibedebate.models.analysis import MessageAnalysis, AnalysisIssue
+from vibedebate.repositories.invalidation import invalidate_on_commit
 
 EntityType = TypeVar("EntityType", bound=Base)
 
@@ -31,9 +33,54 @@ EntityType = TypeVar("EntityType", bound=Base)
 class DebateRepository:
     session: AsyncSession
 
+    async def check_chat_access(self, chat_id: UUID, user_id: UUID) -> None:
+        found = await self.session.scalar(
+            select(DebateChat.id)
+            .join(Debate, Debate.id == DebateChat.debate_id)
+            .where(
+                DebateChat.id == chat_id,
+                DebateChat.user_id == user_id,
+                DebateChat.status != "archived",
+                Debate.status != "archived",
+            )
+        )
+        if found is None:
+            raise ChatNotFoundError()
+
+    async def check_debate_access(self, debate_id: UUID, user_id: UUID) -> None:
+        found = await self.session.scalar(
+            select(Debate.id).where(
+                Debate.id == debate_id,
+                Debate.user_id == user_id,
+                Debate.status != "archived",
+            )
+        )
+        if found is None:
+            raise DebateNotFoundError()
+
+    async def check_analysis_access(self, message_id: UUID, user_id: UUID) -> None:
+        row = (
+            await self.session.execute(
+                select(ChatMessage.role, ChatMessage.generation_status)
+                .join(DebateChat, DebateChat.id == ChatMessage.chat_id)
+                .join(Debate, Debate.id == DebateChat.debate_id)
+                .where(
+                    ChatMessage.id == message_id,
+                    DebateChat.user_id == user_id,
+                    DebateChat.status != "archived",
+                    Debate.status != "archived",
+                )
+            )
+        ).one_or_none()
+        if row is None:
+            raise MessageNotFoundError()
+        if row.role != "user" or row.generation_status != "completed":
+            raise MessageNotAnalyzableError()
+
     async def archive_debate(self, debate_id: UUID, user_id: UUID) -> None:
         debate = await self.debate(debate_id, user_id)
         debate.status = "archived"
+        invalidate_on_commit(self.session, f"debate:{debate_id}", f"debates:{user_id}")
         await self.session.execute(
             update(DebateChat)
             .where(DebateChat.debate_id == debate_id)
@@ -127,7 +174,7 @@ class DebateRepository:
         query = (
             query.where(OpponentPersona.id == persona_id)
             if persona_id
-            else query.where(OpponentPersona.key == "socratic")
+            else query.where(OpponentPersona.key == "basic")
         )
         persona = await self.session.scalar(query)
 
@@ -217,10 +264,14 @@ class DebateRepository:
         chat_id: UUID,
         limit: int | None = None,
         offset: int = 0,
+        *,
+        after_sequence: int = 0,
     ) -> list[ChatMessage]:
         query = (
             select(ChatMessage)
-            .where(ChatMessage.chat_id == chat_id)
+            .where(
+                ChatMessage.chat_id == chat_id, ChatMessage.sequence_no > after_sequence
+            )
             .order_by(ChatMessage.sequence_no)
             .offset(offset)
         )
@@ -263,6 +314,23 @@ class DebateRepository:
 
         return chat
 
+    async def message_context(self, message_id: UUID):
+        row = (
+            await self.session.execute(
+                select(ChatMessage, DebateChat, Debate)
+                .join(DebateChat, ChatMessage.chat_id == DebateChat.id)
+                .join(Debate, DebateChat.debate_id == Debate.id)
+                .where(
+                    ChatMessage.id == message_id,
+                    DebateChat.status != "archived",
+                    Debate.status != "archived",
+                )
+            )
+        ).one_or_none()
+        if row is None:
+            raise MessageNotFoundError()
+        return row
+
     async def completed_history(
         self, chat_id: UUID, through_sequence: int
     ) -> list[ChatMessage]:
@@ -276,6 +344,21 @@ class DebateRepository:
                 )
                 .order_by(ChatMessage.sequence_no)
             )
+        )
+
+    async def completed_head(self, chat_id: UUID, through_sequence: int) -> int:
+        return (
+            await self.session.scalar(
+                select(ChatMessage.sequence_no)
+                .where(
+                    ChatMessage.chat_id == chat_id,
+                    ChatMessage.sequence_no <= through_sequence,
+                    ChatMessage.generation_status == "completed",
+                )
+                .order_by(ChatMessage.sequence_no.desc())
+                .limit(1)
+            )
+            or 0
         )
 
     async def previous_assistant_message(

@@ -5,6 +5,8 @@ from uuid import UUID
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert
+from vibedebate.repositories.invalidation import invalidate_on_commit
 
 from vibedebate.models.analysis import AnalysisIssue, MessageAnalysis
 from vibedebate.models.debate import ChatMessage, DebateChat
@@ -22,7 +24,6 @@ class AnalysisRepository:
         return analysis
 
     async def get_or_create(self, message_id: UUID) -> MessageAnalysis:
-        # The caller holds the chat lock to serialize creation and retries.
         analysis = await self.session.scalar(
             select(MessageAnalysis)
             .where(MessageAnalysis.message_id == message_id)
@@ -44,7 +45,22 @@ class AnalysisRepository:
         )
 
     async def claim(self, message_id: UUID) -> UUID | None:
-        return await self.session.scalar(
+        analysis_id = await self._claim_pending(message_id)
+        if analysis_id is not None:
+            return analysis_id
+
+        created = await self.session.scalar(
+            insert(MessageAnalysis)
+            .values(message_id=message_id, analysis_status="pending")
+            .on_conflict_do_nothing(index_elements=[MessageAnalysis.message_id])
+            .returning(MessageAnalysis.id)
+        )
+        if created is not None:
+            return await self._claim_pending(message_id)
+        return None
+
+    async def _claim_pending(self, message_id: UUID) -> UUID | None:
+        analysis_id = await self.session.scalar(
             update(MessageAnalysis)
             .where(
                 MessageAnalysis.message_id == message_id,
@@ -53,16 +69,38 @@ class AnalysisRepository:
             .values(analysis_status="running", started_at=datetime.now(timezone.utc))
             .returning(MessageAnalysis.id)
         )
+        if analysis_id is not None:
+            invalidate_on_commit(self.session, f"analysis:{message_id}")
+        return analysis_id
 
     async def fail(self, analysis_id: UUID) -> None:
-        await self.session.execute(
+        message_id = await self.session.scalar(
             update(MessageAnalysis)
             .where(
                 MessageAnalysis.id == analysis_id,
                 MessageAnalysis.analysis_status == "running",
             )
             .values(analysis_status="failed", completed_at=datetime.now(timezone.utc))
+            .returning(MessageAnalysis.message_id)
         )
+        if message_id:
+            invalidate_on_commit(self.session, f"analysis:{message_id}")
+
+    async def recover_stale(self) -> None:
+        from datetime import timedelta
+
+        ids = await self.session.scalars(
+            update(MessageAnalysis)
+            .where(
+                MessageAnalysis.analysis_status == "running",
+                MessageAnalysis.started_at
+                < datetime.now(timezone.utc) - timedelta(minutes=10),
+            )
+            .values(analysis_status="failed", completed_at=datetime.now(timezone.utc))
+            .returning(MessageAnalysis.message_id)
+        )
+        for message_id in ids:
+            invalidate_on_commit(self.session, f"analysis:{message_id}")
 
     async def complete(
         self,
@@ -71,9 +109,8 @@ class AnalysisRepository:
         *,
         values: dict[str, Any],
         issues: list[dict[str, Any]],
-    ) -> None:
-        # Match the chat -> analysis lock order used by lazy creation/retry.
-        await self.session.scalar(
+    ) -> DebateChat | None:
+        chat = await self.session.scalar(
             select(DebateChat)
             .join(ChatMessage)
             .where(ChatMessage.id == message_id)
@@ -105,3 +142,4 @@ class AnalysisRepository:
             .where(ChatMessage.id == message_id)
             .values(is_substantive=values["is_substantive"])
         )
+        return chat

@@ -88,8 +88,19 @@ async def list_messages(
     service: FromDishka[DebateService],
     limit: Limit = 50,
     offset: Offset = 0,
+    after_sequence: Annotated[int, Query(ge=0)] = 0,
 ) -> list[MessageResponse]:
-    return await service.messages(user, chat_id, limit, offset)
+    return await service.messages(user, chat_id, limit, offset, after_sequence)
+
+
+@router.get("/chats/{chat_id}/analyses", response_model=list[MessageAnalysisResponse])
+async def chat_analyses(
+    chat_id: UUID,
+    user: AuthenticatedUser,
+    service: FromDishka[DebateService],
+    message_ids: Annotated[list[UUID], Query(min_length=1, max_length=100)],
+):
+    return await service.analyses_batch(user, chat_id, list(dict.fromkeys(message_ids)))
 
 
 @router.post(

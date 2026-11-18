@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from vibedebate.core.config import DatabaseSettings
+from vibedebate.repositories.invalidation import publish_invalidations
 
 
 def create_engine(
@@ -22,3 +23,4 @@ async def transaction(
     async with factory() as session:
         async with session.begin():
             yield session
+        await publish_invalidations(session)
